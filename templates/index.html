@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nexus Bank ATM</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0a0a0f;
+    --machine:   #12121e;
+    --panel:     #1a1a2e;
+    --border:    #2d2d4a;
+    --screen-bg: #0d1117;
+    --screen-b:  #21262d;
+    --teal:      #4ecdc4;
+    --teal-dim:  #2a7a76;
+    --red:       #ff6b6b;
+    --muted:     #8892a4;
+    --dim:       #555577;
+    --text:      #e2e8f0;
+    --sub:       #c9d1d9;
+    --mono:      'Share Tech Mono', monospace;
+    --sans:      'Rajdhani', sans-serif;
+  }
+
+  body {
+    background: var(--bg);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono);
+    padding: 2rem 1rem;
+  }
+
+  /* ── TOP BAR ── */
+  .top-bar {
+    width: 100%; max-width: 480px;
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 1.5rem;
+    padding: 0 4px;
+  }
+  .top-bar .bank-logo { font-family: var(--sans); font-size: 20px; font-weight: 600; color: var(--teal); letter-spacing: 3px; }
+  .top-bar .clock     { font-size: 13px; color: var(--dim); }
+
+  /* ── MACHINE SHELL ── */
+  .machine {
+    width: 100%; max-width: 420px;
+    background: var(--machine);
+    border-radius: 28px;
+    border: 2px solid var(--border);
+    overflow: hidden;
+  }
+
+  /* metal top strip */
+  .machine-top {
+    background: var(--panel);
+    padding: 18px 24px 14px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+  }
+  .machine-top .brand { font-size: 11px; letter-spacing: 4px; color: var(--teal); }
+  .machine-top .status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--teal);
+    animation: blink 2.5s ease-in-out infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.25} }
+
+  .machine-body { padding: 20px 22px 24px; }
+
+  /* ── CARD SLOT ── */
+  .card-slot-row {
+    display: flex; align-items: center; justify-content: center;
+    gap: 10px; margin-bottom: 16px; cursor: pointer;
+  }
+  .slot-icon { font-size: 22px; }
+  .slot-label { font-size: 11px; color: var(--dim); letter-spacing: 2px; text-transform: uppercase; }
+
+  /* ── SCREEN ── */
+  .screen {
+    background: var(--screen-bg);
+    border: 2px solid var(--screen-b);
+    border-radius: 14px;
+    padding: 18px 18px 14px;
+    min-height: 230px;
+    margin-bottom: 18px;
+    position: relative;
+    overflow: hidden;
+  }
+  .screen-scanline {
+    position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--teal), transparent);
+    animation: scan 4s ease-in-out infinite; opacity: .6;
+  }
+  @keyframes scan {
+    0%   { transform: translateX(-100%); opacity: 0; }
+    50%  { opacity: 1; }
+    100% { transform: translateX(100%); opacity: 0; }
+  }
+  .screen-header {
+    font-size: 10px; letter-spacing: 3px; color: var(--teal);
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--screen-b);
+    padding-bottom: 8px; margin-bottom: 14px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .screen-body { color: var(--text); font-size: 14px; }
+
+  /* ── GENERIC COMPONENTS ── */
+  .center-msg { text-align: center; padding: 18px 0; }
+  .big-icon   { font-size: 38px; margin-bottom: 10px; }
+  .msg-title  { font-size: 16px; color: var(--text); margin-bottom: 6px; }
+  .msg-sub    { font-size: 12px; color: var(--muted); line-height: 1.6; }
+
+  /* balance */
+  .balance-block { text-align: center; padding: 14px 0; }
+  .bal-label      { font-size: 10px; color: var(--muted); letter-spacing: 2px; margin-bottom: 6px; }
+  .bal-amount     { font-size: 34px; color: var(--teal); font-weight: 700; letter-spacing: 1px; }
+  .bal-sub        { font-size: 11px; color: var(--dim); margin-top: 6px; }
+
+  /* menu */
+  .menu-list     { list-style: none; }
+  .menu-list li  {
+    padding: 10px 12px; border-radius: 8px; cursor: pointer;
+    display: flex; align-items: center; gap: 10px;
+    color: var(--sub); font-size: 14px;
+    border: 1px solid transparent;
+    transition: all .15s;
+  }
+  .menu-list li:hover { background: #161b22; border-color: var(--teal); color: var(--teal); }
+  .menu-icon { font-size: 16px; width: 22px; text-align: center; }
+
+  /* pin dots */
+  .pin-row { display: flex; gap: 10px; justify-content: center; margin: 16px 0 10px; }
+  .pin-dot {
+    width: 16px; height: 16px; border-radius: 50%;
+    border: 2px solid var(--teal);
+    background: transparent; transition: background .1s;
+  }
+  .pin-dot.filled { background: var(--teal); }
+
+  /* amount display */
+  .amount-display {
+    background: #161b22; border: 1px solid var(--screen-b);
+    border-radius: 8px; padding: 12px 16px;
+    font-size: 26px; color: var(--teal);
+    text-align: right; letter-spacing: 2px;
+    min-height: 54px;
+  }
+
+  /* quick amounts */
+  .quick-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 14px; }
+  .quick-btn  {
+    background: #161b22; border: 1px solid var(--screen-b);
+    border-radius: 8px; color: var(--sub); font-size: 13px;
+    font-family: var(--mono); padding: 10px 6px; text-align: center;
+    cursor: pointer; transition: all .15s;
+  }
+  .quick-btn:hover { border-color: var(--teal); color: var(--teal); }
+
+  /* confirm summary */
+  .confirm-row {
+    display: flex; justify-content: space-between;
+    padding: 9px 0; border-bottom: 1px solid var(--screen-b); font-size: 13px;
+  }
+  .confirm-row:last-of-type { border-bottom: none; }
+  .confirm-label { color: var(--muted); }
+  .confirm-value { color: var(--text); }
+  .confirm-value.hi { color: var(--teal); font-size: 18px; font-weight: 700; }
+
+  /* mini statement */
+  .stmt-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 0; border-bottom: 1px solid var(--screen-b); font-size: 12px;
+  }
+  .stmt-row:last-child { border-bottom: none; }
+  .stmt-date  { font-size: 10px; color: var(--dim); margin-top: 2px; }
+  .credit     { color: var(--teal); }
+  .debit      { color: var(--red); }
+
+  /* input label */
+  .input-label { font-size: 10px; color: var(--muted); letter-spacing: 2px; margin-bottom: 12px; }
+
+  /* ── KEYPAD ── */
+  .keypad {
+    display: grid; grid-template-columns: repeat(3,1fr); gap: 8px;
+    margin-bottom: 12px;
+  }
+  .key {
+    background: #1e1e30; border: 1px solid var(--border);
+    border-radius: 10px; color: var(--text);
+    font-size: 18px; font-family: var(--mono);
+    padding: 14px; cursor: pointer; text-align: center;
+    transition: all .12s; user-select: none;
+  }
+  .key:hover  { background: #2a2a40; border-color: var(--teal); color: var(--teal); }
+  .key:active { transform: scale(.95); background: var(--teal); color: var(--screen-bg); }
+  .key.del    { background: #2d1a1a; border-color: #5a2828; color: var(--red); font-size: 13px; }
+  .key.del:hover { background: #3d1a1a; border-color: var(--red); }
+  .key.ok     { background: #1a2d1a; border-color: #285a28; color: var(--teal); font-size: 12px; letter-spacing: 1px; }
+  .key.ok:hover { background: #1e3d1e; border-color: var(--teal); }
+
+  /* ── ACTION ROW ── */
+  .action-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .action-btn {
+    background: transparent; border: 1px solid var(--border);
+    border-radius: 10px; color: var(--muted);
+    font-size: 11px; font-family: var(--mono);
+    padding: 11px; cursor: pointer; transition: all .15s;
+    letter-spacing: 1px; text-transform: uppercase;
+  }
+  .action-btn:hover    { border-color: var(--red); color: var(--red); }
+  .action-btn.confirm  { border-color: #285a28; color: var(--teal); }
+  .action-btn.confirm:hover { background: #1a2d1a; }
+
+  /* ── BOTTOM STRIP ── */
+  .machine-bottom {
+    background: var(--panel); border-top: 1px solid var(--border);
+    padding: 10px 22px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .machine-bottom .info { font-size: 10px; color: var(--dim); letter-spacing: 1px; }
+
+  /* ── SPINNER ── */
+  .spinner {
+    width: 28px; height: 28px;
+    border: 3px solid var(--screen-b);
+    border-top-color: var(--teal);
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+    margin: 30px auto 14px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+    background: #1e1e30; border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 20px;
+    font-size: 13px; color: var(--teal);
+    opacity: 0; transition: opacity .3s;
+    pointer-events: none; white-space: nowrap;
+    z-index: 999;
+  }
+  #toast.show { opacity: 1; }
+
+  /* change-pin specific */
+  .cp-step { display: none; }
+  .cp-step.active { display: block; }
+
+  /* error text */
+  .err-text { font-size: 12px; color: var(--red); margin-top: 8px; text-align: center; min-height: 18px; }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="top-bar">
+  <span class="bank-logo">NEXUS BANK</span>
+  <span class="clock" id="clock">--:--</span>
+</div>
+
+<!-- MACHINE -->
+<div class="machine">
+
+  <div class="machine-top">
+    <span class="brand">AUTOMATED TELLER</span>
+    <span class="status-dot" title="Online"></span>
+  </div>
+
+  <div class="machine-body">
+
+    <!-- card slot label -->
+    <div class="card-slot-row" id="card-slot-row" onclick="goTo('insert-card')">
+      <span class="slot-icon">💳</span>
+      <span class="slot-label">Insert card to begin</span>
+    </div>
+
+    <!-- SCREEN -->
+    <div class="screen">
+      <div class="screen-scanline"></div>
+      <div class="screen-header">
+        <span id="screen-title">Welcome</span>
+        <span id="screen-badge" style="font-size:10px;color:var(--dim)"></span>
+      </div>
+      <div class="screen-body" id="screen-body">
+        <!-- dynamic content injected here -->
+      </div>
+    </div>
+
+    <!-- KEYPAD -->
+    <div class="keypad">
+      <div class="key" data-v="1">1</div><div class="key" data-v="2">2</div><div class="key" data-v="3">3</div>
+      <div class="key" data-v="4">4</div><div class="key" data-v="5">5</div><div class="key" data-v="6">6</div>
+      <div class="key" data-v="7">7</div><div class="key" data-v="8">8</div><div class="key" data-v="9">9</div>
+      <div class="key del" data-v="del">DEL</div>
+      <div class="key" data-v="0">0</div>
+      <div class="key ok" data-v="ok">OK</div>
+    </div>
+    <div class="action-row">
+      <button class="action-btn" id="cancel-btn">✕ Cancel</button>
+      <button class="action-btn confirm" id="confirm-btn">✓ Confirm</button>
+    </div>
+
+  </div><!-- /machine-body -->
+
+  <div class="machine-bottom">
+    <span class="info">VISA · MASTERCARD · RUPAY</span>
+    <span class="info" id="session-info">SESSION: --</span>
+  </div>
+
+</div><!-- /machine -->
+
+<div id="toast"></div>
+
+<!-- ═══════════════════════════════════════════════════
+     JAVASCRIPT  —  all UI logic + Flask API calls
+════════════════════════════════════════════════════ -->
+<script>
+const API = "";          // empty = same origin (Flask serves this file)
+const CARD_SLOT = document.getElementById("card-slot-row");
+const TITLE     = document.getElementById("screen-title");
+const BADGE     = document.getElementById("screen-badge");
+const BODY      = document.getElementById("screen-body");
+
+let S = {                // session state
+  screen:    "welcome",
+  card:      "",
+  name:      "",
+  balance:   0,
+  buf:       "",
+  txAmt:     0,
+  cpOldPin:  "",
+  cpStep:    0,          // 0=old, 1=new, 2=confirm-new
+  cpNewPin:  "",
+};
+
+/* ──── API HELPERS ──── */
+async function api(endpoint, body) {
+  try {
+    const r = await fetch(API + endpoint, {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify(body),
+    });
+    return await r.json();
+  } catch(e) {
+    return { success: false, message: "Server unreachable. Is atm.py running?" };
+  }
+}
+
+/* ──── TOAST ──── */
+function toast(msg, ms=2200) {
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), ms);
+}
+
+/* ──── CLOCK ──── */
+function tick() {
+  document.getElementById("clock").textContent =
+    new Date().toLocaleTimeString("en-IN", { hour:"2-digit", minute:"2-digit", second:"2-digit" });
+}
+setInterval(tick, 1000); tick();
+
+/* ──── SCREEN RENDERER ──── */
+function setScreen(title, html, badge="") {
+  TITLE.textContent = title;
+  BADGE.textContent = badge;
+  BODY.innerHTML    = html;
+}
+
+/* ──── SCREENS ──── */
+function screenWelcome() {
+  S.card = ""; S.buf = ""; S.name = ""; S.balance = 0;
+  CARD_SLOT.style.display = "flex";
+  document.getElementById("session-info").textContent = "SESSION: --";
+  setScreen("Welcome",
+    `<div class="center-msg">
+       <div class="big-icon">🏦</div>
+       <div class="msg-title">Welcome to Nexus Bank</div>
+       <div class="msg-sub">Click the card slot above<br>or press any key to begin</div>
+     </div>`);
+}
+
+function screenInsertCard() {
+  CARD_SLOT.style.display = "none"; S.buf = "";
+  setScreen("Card Entry",
+    `<div class="input-label">ENTER 4-DIGIT CARD NUMBER</div>
+     <div class="amount-display" id="card-disp">_ _ _ _</div>
+     <div class="err-text" id="card-err"></div>
+     <div style="margin-top:14px;font-size:11px;color:var(--dim)">Demo cards: 1234 &nbsp;|&nbsp; 5678</div>`);
+}
+
+function screenPin() {
+  S.buf = "";
+  setScreen("PIN Entry",
+    `<div class="input-label">ENTER YOUR 4-DIGIT PIN</div>
+     <div class="pin-row">
+       <div class="pin-dot" id="pd0"></div><div class="pin-dot" id="pd1"></div>
+       <div class="pin-dot" id="pd2"></div><div class="pin-dot" id="pd3"></div>
+     </div>
+     <div class="err-text" id="pin-err"></div>`);
+}
+
+function screenMenu() {
+  document.getElementById("session-info").textContent = "SESSION: ACTIVE";
+  setScreen("Main Menu", `
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Hello, ${S.name}</div>
+    <ul class="menu-list">
+      <li onclick="goTo('balance')"><span class="menu-icon">💰</span> Check Balance</li>
+      <li onclick="goTo('withdraw')"><span class="menu-icon">💵</span> Withdraw Cash</li>
+      <li onclick="goTo('deposit')"><span class="menu-icon">🏦</span> Deposit Cash</li>
+      <li onclick="goTo('mini-stmt')"><span class="menu-icon">📄</span> Mini Statement</li>
+      <li onclick="goTo('change-pin')"><span class="menu-icon">🔒</span> Change PIN</li>
+    </ul>`);
+}
+
+async function screenBalance() {
+  setScreen("Balance", `<div class="spinner"></div><div style="text-align:center;color:var(--muted);font-size:12px">Fetching balance…</div>`);
+  const r = await api("/api/balance", { card_number: S.card });
+  if (r.success) {
+    S.balance = r.balance;
+    setScreen("Account Balance", `
+      <div class="balance-block">
+        <div class="bal-label">AVAILABLE BALANCE</div>
+        <div class="bal-amount">₹${r.balance.toLocaleString("en-IN",{minimumFractionDigits:2})}</div>
+        <div class="bal-sub">Account: XXXX XXXX ${S.card}</div>
+        <div style="margin-top:16px;font-size:11px;color:var(--dim)">
+          ${new Date().toLocaleDateString("en-IN", {day:"numeric",month:"long",year:"numeric"})}
+        </div>
+      </div>`);
+  } else {
+    goTo("error", r.message);
+  }
+}
+
+function screenWithdraw() {
+  S.buf = "";
+  setScreen("Withdraw Cash", `
+    <div class="input-label">SELECT OR ENTER AMOUNT</div>
+    <div class="quick-grid">
+      <div class="quick-btn" onclick="selectAmount(500)">₹500</div>
+      <div class="quick-btn" onclick="selectAmount(1000)">₹1,000</div>
+      <div class="quick-btn" onclick="selectAmount(2000)">₹2,000</div>
+      <div class="quick-btn" onclick="selectAmount(5000)">₹5,000</div>
+      <div class="quick-btn" onclick="selectAmount(10000)">₹10,000</div>
+      <div class="quick-btn" onclick="selectAmount('other')">Other</div>
+    </div>`);
+}
+
+function screenWithdrawCustom() {
+  S.buf = "";
+  setScreen("Enter Amount", `
+    <div class="input-label">TYPE AMOUNT THEN PRESS OK</div>
+    <div class="amount-display" id="amt-disp">₹0</div>
+    <div class="err-text" id="amt-err"></div>`);
+}
+
+function screenWithdrawConfirm() {
+  const after = S.balance - S.txAmt;
+  setScreen("Confirm Withdrawal", `
+    <div class="confirm-row"><span class="confirm-label">Amount</span><span class="confirm-value hi">₹${S.txAmt.toLocaleString("en-IN")}</span></div>
+    <div class="confirm-row"><span class="confirm-label">Current Balance</span><span class="confirm-value">₹${S.balance.toLocaleString("en-IN",{minimumFractionDigits:2})}</span></div>
+    <div class="confirm-row"><span class="confirm-label">After Withdrawal</span><span class="confirm-value">₹${after.toLocaleString("en-IN",{minimumFractionDigits:2})}</span></div>
+    <div style="margin-top:14px;font-size:11px;color:var(--dim);text-align:center">Press CONFIRM or OK to proceed</div>`);
+}
+
+function screenDeposit() {
+  S.buf = "";
+  setScreen("Deposit Cash", `
+    <div class="input-label">ENTER DEPOSIT AMOUNT</div>
+    <div class="amount-display" id="amt-disp">₹0</div>
+    <div class="err-text" id="amt-err"></div>`);
+}
+
+function screenDepositConfirm() {
+  setScreen("Confirm Deposit", `
+    <div class="confirm-row"><span class="confirm-label">Amount</span><span class="confirm-value hi">₹${S.txAmt.toLocaleString("en-IN")}</span></div>
+    <div class="confirm-row"><span class="confirm-label">New Balance</span><span class="confirm-value">₹${(S.balance+S.txAmt).toLocaleString("en-IN",{minimumFractionDigits:2})}</span></div>
+    <div style="margin-top:14px;font-size:11px;color:var(--dim);text-align:center">Press CONFIRM or OK to proceed</div>`);
+}
+
+async function screenMiniStmt() {
+  setScreen("Mini Statement", `<div class="spinner"></div>`);
+  const r = await api("/api/mini_statement", { card_number: S.card });
+  if (!r.success) { goTo("error", r.message); return; }
+  const rows = r.transactions.map(t => `
+    <div class="stmt-row">
+      <div><div>${t.desc}</div><div class="stmt-date">${t.date}</div></div>
+      <div class="${t.type === 'credit' ? 'credit' : 'debit'}">
+        ${t.type === 'credit' ? '+' : ''}₹${Math.abs(t.amount).toLocaleString("en-IN")}
+      </div>
+    </div>`).join("");
+  setScreen("Mini Statement", `<div style="font-size:11px">${rows}</div>`, "LAST 5 TXN");
+}
+
+function screenChangePin() {
+  S.cpStep = 0; S.cpOldPin = ""; S.cpNewPin = ""; S.buf = "";
+  setScreen("Change PIN", `
+    <div class="input-label" id="cp-label">ENTER CURRENT PIN</div>
+    <div class="pin-row">
+      <div class="pin-dot" id="pd0"></div><div class="pin-dot" id="pd1"></div>
+      <div class="pin-dot" id="pd2"></div><div class="pin-dot" id="pd3"></div>
+    </div>
+    <div class="err-text" id="cp-err"></div>`);
+}
+
+function successScreen(title, icon, msg, sub, then, delay=3000) {
+  setScreen(title, `
+    <div class="center-msg">
+      <div class="big-icon">${icon}</div>
+      <div class="msg-title">${msg}</div>
+      <div class="msg-sub">${sub}</div>
+    </div>`);
+  setTimeout(then, delay);
+}
+
+function errorScreen(msg, then, delay=3000) {
+  setScreen("Error", `
+    <div class="center-msg">
+      <div class="big-icon">❌</div>
+      <div class="msg-title" style="color:var(--red)">Error</div>
+      <div class="msg-sub">${msg}</div>
+    </div>`);
+  setTimeout(then, delay);
+}
+
+/* ──── ROUTER ──── */
+function goTo(screen, extra="") {
+  S.screen = screen;
+  S.buf    = "";
+  const routes = {
+    "welcome":          screenWelcome,
+    "insert-card":      screenInsertCard,
+    "pin":              screenPin,
+    "menu":             screenMenu,
+    "balance":          screenBalance,
+    "withdraw":         screenWithdraw,
+    "withdraw-custom":  screenWithdrawCustom,
+    "withdraw-confirm": screenWithdrawConfirm,
+    "deposit":          screenDeposit,
+    "deposit-confirm":  screenDepositConfirm,
+    "mini-stmt":        screenMiniStmt,
+    "change-pin":       screenChangePin,
+    "error":            () => errorScreen(extra, () => goTo(S.card ? "menu" : "welcome")),
+  };
+  if (routes[screen]) routes[screen]();
+}
+
+/* ──── QUICK AMOUNT HELPER ──── */
+function selectAmount(val) {
+  if (val === "other") { goTo("withdraw-custom"); return; }
+  S.txAmt = val;
+  goTo("withdraw-confirm");
+}
+
+/* ──── PIN DOTS HELPER ──── */
+function updatePinDots(len) {
+  [0,1,2,3].forEach(i => {
+    const d = document.getElementById("pd"+i);
+    if (d) d.classList.toggle("filled", i < len);
+  });
+}
+
+/* ──── KEYPAD HANDLER ──── */
+async function handleKey(val) {
+  const scr = S.screen;
+
+  // DEL
+  if (val === "del") { S.buf = S.buf.slice(0,-1); }
+  // digits
+  else if (val !== "ok" && S.buf.length < 12) { S.buf += val; }
+
+  /* ─ welcome ─ */
+  if (scr === "welcome") { goTo("insert-card"); return; }
+
+  /* ─ insert-card ─ */
+  if (scr === "insert-card") {
+    const d = document.getElementById("card-disp");
+    if (d) {
+      d.textContent = S.buf.length
+        ? S.buf.split("").join(" ")
+        : "_ _ _ _";
+    }
+    if (val === "ok") {
+      if (S.buf.length !== 4) {
+        const e = document.getElementById("card-err");
+        if (e) e.textContent = "Card number must be 4 digits"; return;
+      }
+      setScreen("Verifying", `<div class="spinner"></div>`);
+      const r = await api("/api/insert_card", { card_number: S.buf });
+      if (r.success) { S.card = S.buf; goTo("pin"); }
+      else {
+        toast(r.message);
+        goTo("insert-card");
+        setTimeout(() => {
+          const e = document.getElementById("card-err");
+          if (e) e.textContent = r.message;
+        }, 50);
+      }
+    }
+    return;
+  }
+
+  /* ─ pin ─ */
+  if (scr === "pin") {
+    if (S.buf.length > 4) S.buf = S.buf.slice(0,4);
+    updatePinDots(S.buf.length);
+    if (val === "ok") {
+      if (S.buf.length !== 4) return;
+      setScreen("Verifying", `<div class="spinner"></div>`);
+      const r = await api("/api/verify_pin", { card_number: S.card, pin: S.buf });
+      if (r.success) {
+        S.name = r.name; S.balance = r.balance;
+        goTo("menu");
+      } else if (r.blocked) {
+        setScreen("Blocked",
+          `<div class="center-msg"><div class="big-icon">🔒</div>
+           <div class="msg-title">Card Blocked</div>
+           <div class="msg-sub">Too many wrong attempts.<br>Please contact your bank.</div></div>`);
+        setTimeout(() => goTo("welcome"), 5000);
+      } else {
+        toast(r.message, 3000);
+        goTo("pin");
+        setTimeout(() => {
+          const e = document.getElementById("pin-err");
+          if (e) e.textContent = r.message;
+        }, 60);
+      }
+    }
+    return;
+  }
+
+  /* ─ balance / mini-stmt ─ */
+  if (["balance","mini-stmt"].includes(scr)) {
+    if (val === "ok") goTo("menu"); return;
+  }
+
+  /* ─ withdraw-custom ─ */
+  if (scr === "withdraw-custom") {
+    const d = document.getElementById("amt-disp");
+    if (d) d.textContent = S.buf.length ? "₹"+parseInt(S.buf).toLocaleString("en-IN") : "₹0";
+    if (val === "ok") {
+      if (!S.buf.length) return;
+      S.txAmt = parseInt(S.buf);
+      goTo("withdraw-confirm");
+    }
+    return;
+  }
+
+  /* ─ withdraw-confirm ─ */
+  if (scr === "withdraw-confirm") {
+    if (val === "ok") {
+      setScreen("Processing", `<div class="spinner"></div>`);
+      const r = await api("/api/withdraw", { card_number: S.card, amount: S.txAmt });
+      if (r.success) {
+        S.balance = r.new_balance;
+        successScreen("Success","✅","Cash Dispensed!",
+          `₹${S.txAmt.toLocaleString("en-IN")} withdrawn.<br>Please collect your cash.`,
+          () => goTo("menu"));
+      } else {
+        errorScreen(r.message, () => goTo("withdraw"));
+      }
+    }
+    return;
+  }
+
+  /* ─ deposit ─ */
+  if (scr === "deposit") {
+    const d = document.getElementById("amt-disp");
+    if (d) d.textContent = S.buf.length ? "₹"+parseInt(S.buf).toLocaleString("en-IN") : "₹0";
+    if (val === "ok") {
+      if (!S.buf.length) return;
+      S.txAmt = parseInt(S.buf);
+      goTo("deposit-confirm");
+    }
+    return;
+  }
+
+  /* ─ deposit-confirm ─ */
+  if (scr === "deposit-confirm") {
+    if (val === "ok") {
+      setScreen("Processing", `<div class="spinner"></div>`);
+      const r = await api("/api/deposit", { card_number: S.card, amount: S.txAmt });
+      if (r.success) {
+        S.balance = r.new_balance;
+        successScreen("Success","✅","Deposit Successful!",
+          `₹${S.txAmt.toLocaleString("en-IN")} added to your account.`,
+          () => goTo("menu"));
+      } else {
+        errorScreen(r.message, () => goTo("deposit"));
+      }
+    }
+    return;
+  }
+
+  /* ─ change-pin ─ */
+  if (scr === "change-pin") {
+    if (S.buf.length > 4) S.buf = S.buf.slice(0,4);
+    updatePinDots(S.buf.length);
+
+    if (val === "ok" && S.buf.length === 4) {
+      if (S.cpStep === 0) {
+        S.cpOldPin = S.buf; S.buf = ""; S.cpStep = 1;
+        const l = document.getElementById("cp-label");
+        if (l) l.textContent = "ENTER NEW PIN";
+        updatePinDots(0);
+      } else if (S.cpStep === 1) {
+        S.cpNewPin = S.buf; S.buf = ""; S.cpStep = 2;
+        const l = document.getElementById("cp-label");
+        if (l) l.textContent = "CONFIRM NEW PIN";
+        updatePinDots(0);
+      } else {
+        if (S.buf !== S.cpNewPin) {
+          const e = document.getElementById("cp-err");
+          if (e) e.textContent = "PINs do not match. Try again.";
+          S.buf = ""; S.cpStep = 1; updatePinDots(0);
+          const l = document.getElementById("cp-label");
+          if (l) l.textContent = "ENTER NEW PIN";
+          return;
+        }
+        setScreen("Updating", `<div class="spinner"></div>`);
+        const r = await api("/api/change_pin", {
+          card_number: S.card, old_pin: S.cpOldPin, new_pin: S.cpNewPin
+        });
+        if (r.success) {
+          successScreen("Success","✅","PIN Changed!","Your new PIN is active.", () => goTo("menu"));
+        } else {
+          errorScreen(r.message, () => goTo("change-pin"));
+        }
+      }
+    }
+    return;
+  }
+}
+
+/* ──── WIRE KEYPAD ──── */
+document.querySelectorAll(".key").forEach(k =>
+  k.addEventListener("click", () => handleKey(k.dataset.v))
+);
+
+/* cancel */
+document.getElementById("cancel-btn").addEventListener("click", () => {
+  if (!S.card || S.screen === "welcome" || S.screen === "insert-card") {
+    goTo("welcome");
+  } else if (S.screen === "menu") {
+    S.card = "";
+    successScreen("Goodbye","👋","Thank you!","Card ejected. Goodbye!", () => goTo("welcome"), 2500);
+  } else {
+    goTo("menu");
+  }
+});
+
+/* confirm = OK */
+document.getElementById("confirm-btn").addEventListener("click", () => handleKey("ok"));
+
+/* ── INIT ── */
+goTo("welcome");
+</script>
+</body>
+</html>
