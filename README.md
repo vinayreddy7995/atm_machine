@@ -17,4 +17,4 @@ A simple ATM simulation project built using Python and Flask.
 
 ## ▶️ How to Run
 
-1. Clone the repository:
+1. Open the link in Website_link or open it from the About section
